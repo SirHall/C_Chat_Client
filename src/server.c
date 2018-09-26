@@ -16,7 +16,8 @@ char IPAddress[] = "127.0.0.1";
 
 int maxConnections = 5;
 
-int main(){
+//Server
+int main(int argc, char *argv[]){
 	
 	char serverMessage[2048] = "You have reached the server";
 	

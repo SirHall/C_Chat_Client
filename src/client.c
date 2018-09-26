@@ -20,7 +20,8 @@ void Error(const char *msg){
     exit(1);
 }
 
-int main(int argc, char *argv){
+//Client
+int main(int argc, char *argv[]){
     
     //Create socket
     int netSocket = socket(AF_INET, SOCK_STREAM, TCP);
@@ -52,3 +53,7 @@ int main(int argc, char *argv){
 
     return 0;
 }
+
+
+
+
