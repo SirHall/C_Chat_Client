@@ -30,8 +30,10 @@ char declineMessage[256] = "Connection declined, server ful\n"; //{TODO} May wan
 
 int netSocket;
 
+char stdIn[2048];
+
 int main(int argc, char *argv[]){
-	connectionPorts = new int[maxConnections];
+	connectionPorts = int[maxConnections];
 	//Initialise all default ports to -1
 	for(int i = 0; i < maxConnections; i++)
 		connectionPorts[i] = -1;
@@ -46,7 +48,12 @@ int main(int argc, char *argv[]){
 	//---SETUP SERVER---//
 	bind(netSocket, (struct sockaddr*) &serverAddress, sizeof(serverAddress));
 
-
+	int quit = 0;
+	while(!quit){
+		//{TODO} Change this to 'getf'
+		scanf(&stdIn, sizeof(stdIn));
+		RunCommand(stdIn);
+	}
 }
 
 
@@ -109,11 +116,13 @@ void *RecieveMessage(){
 	}
 }
 
-//To be run asyncronously
-void *SendMessage(){
+void SendMessage(char *message){
 	//{TODO} Get user input
 	//{TODO} Clear from memory
-	char message[2048] = ""; //{TODO} Move buffer size into member field
-	
+	//char message[2048] = ""; //{TODO} Move buffer size into member field
+
 }
 
+void RunCommand(char **args){
+
+}
