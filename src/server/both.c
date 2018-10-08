@@ -132,9 +132,15 @@ void *RecieveMessages(void *any){
 	//{TODO} Clear from memory
 	char recievedMessage[2048] = ""; //{TODO} Move buffer size into member field	
 	while(1){//{TODO} Replace loop
-		recv(netSocket, recievedMessage, sizeof(recievedMessage), 0);
-		printf("%s", recievedMessage); //{TODO} Temporary!!! Is not thread safe!
-		SendMessageAll(recievedMessage);
+		// recv(netSocket, recievedMessage, sizeof(recievedMessage), 0);
+		// printf("Recieved message"); //{TODO} Not threadsafe!
+		for(int i = 0; i < maxConnections; i++){ //{TODO} Fix up!
+			if(connectionPorts[i] == -1) 
+				continue;
+			recv(connectionPorts[i], recievedMessage, sizeof(recievedMessage), 0);
+			printf("%s", recievedMessage); //{TODO} Temporary!!! Is not thread safe!
+		}
+		// SendMessageAll(recievedMessage);
 	}
 	return NULL;
 }

@@ -62,6 +62,8 @@ void Error(const char *msg){
 //Client
 int main(int argc, char *argv[]){
 
+    Initialize();
+
     StartNCurses();
 
     SetupNet();
@@ -127,7 +129,7 @@ void Loop(){
 		if(typedKey != -1){
             if(typedKey == 3) 
                 break; //User pressed Ctrl+C
-            else if(typedKey == KEY_ENTER){
+            else if(typedKey == KEY_ENTER || typedKey == 10){
                 SendMessage(GetBuffer());
                 Clear();}
             else if(typedKey == KEY_BACKSPACE)
