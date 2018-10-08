@@ -3,6 +3,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/types.h>
+#include <pthread.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 
@@ -14,8 +15,23 @@
 
 #pragma region Function Identifiers
 
-void *ListenToNewConnections();
+void *ListenToNewConnections(void *any);
+void *RecieveMessages(void *any);
 void RemoveConnectionPort(int connectionPort);
+void SendMessageAll(char *message);
+void SendMessageTarget(char *message, int socket);
+void SendMessageAllExcept(char *message, int exceptionSocket);
+int AddConnection(int connectionPort);
+void RemoveConnectionPort(int connectionPort);
+
+#pragma endregion
+
+#pragma region Internal
+
+int netSocket;
+pthread_t newConnThread;
+pthread_t recievedMsgThread;
+
 
 #pragma endregion
 
@@ -26,19 +42,18 @@ int currentConnections = 0;
 int *connectionPorts;
 
 char connectionMessage[256] = "Connection successful!\n";
-char declineMessage[256] = "Connection declined, server ful\n"; //{TODO} May want to setup proper error codes
+char declineMessage[256] = "Connection declined, server full\n"; //{TODO} May want to setup proper error codes
 
-int netSocket;
 
 char stdIn[2048];
 
 int main(int argc, char *argv[]){
-	connectionPorts = int[maxConnections];
-	//Initialise all default ports to -1
+	connectionPorts = calloc(maxConnections, sizeof(int));
+	
 	for(int i = 0; i < maxConnections; i++)
-		connectionPorts[i] = -1;
+		connectionPorts[i] = -1; //Initialise all default ports to -1
 
-	netSocket = socket(AF_INET, SOCK_STREAM, TCP)	
+	netSocket = socket(AF_INET, SOCK_STREAM, TCP);
 	
 	struct sockaddr_in serverAddress;
 	serverAddress.sin_family = AF_INET;
@@ -48,28 +63,34 @@ int main(int argc, char *argv[]){
 	//---SETUP SERVER---//
 	bind(netSocket, (struct sockaddr*) &serverAddress, sizeof(serverAddress));
 
-	int quit = 0;
-	while(!quit){
-		//{TODO} Change this to 'getf'
-		scanf(&stdIn, sizeof(stdIn));
-		RunCommand(stdIn);
-	}
+	pthread_create(&newConnThread, NULL, ListenToNewConnections, NULL);
+	pthread_create(&recievedMsgThread, NULL, RecieveMessages, NULL);
+
+	pthread_join(newConnThread, NULL);
+	pthread_join(recievedMsgThread, NULL);
+	
+
+	// int quit = 0;
+	// while(!quit){
+	// 	//{TODO} Change this to 'getf'
+	// 	scanf(&stdIn, sizeof(stdIn));
+	// 	RunCommand(stdIn);
+	// }
 }
 
-
-
-void *ListenToNewConnections(){
+void *ListenToNewConnections(void *any){
 	//{TODO} I don't think I'm supposed to just surround this in a straight up loop...
-	while(true){
+	while(1){
 		listen(netSocket, maxConnections);
+		printf("%s\n", "Got new connection"); //{TODO} Not threadsafe!!!
 		int clientSocket = accept(netSocket, NULL, NULL);
 		if(currentConnections < maxConnections){
 			//Connection succesful
-			send(clientSocket, connectionMessage, sizeof(connectionMessage));
-
+			send(clientSocket, connectionMessage, sizeof(connectionMessage), 0);
+			AddConnection(clientSocket); //{TODO} Not threadsafe!!!
 		}else{
 			//Connection declined
-			send(clientSocket, declineMessage, sizeof(declineMessage));
+			send(clientSocket, declineMessage, sizeof(declineMessage), 0);
 		}
 	}	
 }
@@ -80,7 +101,7 @@ int AddConnection(int connectionPort){
 	//Find first element in 'connectionPorts'
 	for(int i = 0; i < maxConnections; i++){
 		if(connectionPorts[i] == -1){
-			emptyConnectionIndex = -1;
+			emptyConnectionIndex = i;
 			break;
 		}
 	}
@@ -107,20 +128,31 @@ void RemoveConnectionPort(int connectionPort){
 }
 
 //To be run asyncronously
-void *RecieveMessage(){
+void *RecieveMessages(void *any){
 	//{TODO} Clear from memory
 	char recievedMessage[2048] = ""; //{TODO} Move buffer size into member field	
-	while(true){//{TODO} Replace loop
-		recv(netSocket, &recievedMessage, sizeof(recievedMessage));
-		printf(recievedMessage);
+	while(1){//{TODO} Replace loop
+		recv(netSocket, recievedMessage, sizeof(recievedMessage), 0);
+		printf("%s", recievedMessage); //{TODO} Temporary!!! Is not thread safe!
+		SendMessageAll(recievedMessage);
 	}
+	return NULL;
 }
 
-void SendMessage(char *message){
-	//{TODO} Get user input
-	//{TODO} Clear from memory
-	//char message[2048] = ""; //{TODO} Move buffer size into member field
+void SendMessageTarget(char *message, int socket){
+	send(socket, message, sizeof(message), 0);
+}
 
+void SendMessageAll(char *message){
+	for(int i = 0; i < maxConnections; i++)
+		if(connectionPorts[i] != -1) //If this connection exists
+			SendMessageTarget(message, connectionPorts[i]);
+}
+
+void SendMessageAllExcept(char *message, int exceptionSocket){
+	for(int i = 0; i < maxConnections; i++)
+		if(connectionPorts[i] != -1 && connectionPorts[i] != exceptionSocket)
+			SendMessageTarget(message, connectionPorts[i]);
 }
 
 void RunCommand(char **args){
