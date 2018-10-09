@@ -1,7 +1,7 @@
 #include "messageBuffer.h"
 
 char **buffer; //Array of strings
-int maxBufferElements = 10;
+int maxBufferElements = 2048;
 int maxBufferElementLength = 2048;
 int lostMessages = 0;
 

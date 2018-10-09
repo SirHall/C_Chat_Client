@@ -97,9 +97,9 @@ void Connect(){
     connStat = connect(netSocket, (struct sockaddr*) &address, sizeof(address));
 
     if(connStat == -1)
-        printf("Connection failed %d\n", connStat);
+        printw("Connection failed %d\n", connStat);
     else
-        printf("Connected!\n");
+        printw("Connected!\n");
 }
 
 //Must be run in thread
@@ -135,8 +135,10 @@ void Loop(){
             else if(typedKey == KEY_BACKSPACE)
                 RemoveLastCharacter();
             else{
+                AppendCharacter(*inVal);
                 printw(inVal);
-                AppendCharacter(*inVal);}
+                // SendMessage(inVal);}//{TODO} Just here for testing! REMOVE
+            }
         }
 		
         // else

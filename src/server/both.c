@@ -35,8 +35,16 @@ pthread_t recievedMsgThread;
 
 #pragma endregion
 
+#pragma region Mutexes
+
+pthread_mutex_t printMutex;
+pthread_mutex_t connectionsMutex;
+pthread_mutex_t recievedMsgMutex;
+
+#pragma endregion
+
 int port = 9002;
-int maxConnections = 1;
+int maxConnections = 10;
 int currentConnections = 0;
 
 int *connectionPorts;
@@ -63,35 +71,50 @@ int main(int argc, char *argv[]){
 	//---SETUP SERVER---//
 	bind(netSocket, (struct sockaddr*) &serverAddress, sizeof(serverAddress));
 
+
+	//--SETUP THREADS--//
+	//Mutexes
+	pthread_mutex_init(&printMutex, NULL);
+	pthread_mutex_init(&connectionsMutex, NULL);
+	pthread_mutex_init(&recievedMsgMutex, NULL);
+
 	pthread_create(&newConnThread, NULL, ListenToNewConnections, NULL);
 	pthread_create(&recievedMsgThread, NULL, RecieveMessages, NULL);
 
 	pthread_join(newConnThread, NULL);
 	pthread_join(recievedMsgThread, NULL);
-	
 
-	// int quit = 0;
-	// while(!quit){
-	// 	//{TODO} Change this to 'getf'
-	// 	scanf(&stdIn, sizeof(stdIn));
-	// 	RunCommand(stdIn);
-	// }
+	//{TODO} Destroy threads and mutexes
+	return 0;
 }
 
 void *ListenToNewConnections(void *any){
-	//{TODO} I don't think I'm supposed to just surround this in a straight up loop...
 	while(1){
 		listen(netSocket, maxConnections);
-		printf("%s\n", "Got new connection"); //{TODO} Not threadsafe!!!
+		pthread_mutex_lock(&connectionsMutex);
+		if(currentConnections >= maxConnections){
+			pthread_mutex_unlock(&connectionsMutex);
+			continue;
+		}
+		pthread_mutex_unlock(&connectionsMutex);
+
 		int clientSocket = accept(netSocket, NULL, NULL);
+		
+		pthread_mutex_lock(&printMutex);
+		printf("%s: %d\n", "Got new connection", clientSocket); //{TODO} Not threadsafe!!!
+		printf("Now has %d connections\n", currentConnections);
+
 		if(currentConnections < maxConnections){
 			//Connection succesful
 			send(clientSocket, connectionMessage, sizeof(connectionMessage), 0);
+			pthread_mutex_lock(&connectionsMutex);
 			AddConnection(clientSocket); //{TODO} Not threadsafe!!!
+			pthread_mutex_unlock(&connectionsMutex);
 		}else{
 			//Connection declined
 			send(clientSocket, declineMessage, sizeof(declineMessage), 0);
 		}
+		pthread_mutex_unlock(&printMutex);
 	}	
 }
 
@@ -132,14 +155,30 @@ void *RecieveMessages(void *any){
 	//{TODO} Clear from memory
 	char recievedMessage[2048] = ""; //{TODO} Move buffer size into member field	
 	while(1){//{TODO} Replace loop
-		// recv(netSocket, recievedMessage, sizeof(recievedMessage), 0);
-		// printf("Recieved message"); //{TODO} Not threadsafe!
+		// pthread_mutex_lock(&recievedMsgMutex);
+		pthread_mutex_lock(&printMutex);
+		pthread_mutex_lock(&connectionsMutex);
 		for(int i = 0; i < maxConnections; i++){ //{TODO} Fix up!
 			if(connectionPorts[i] == -1) 
 				continue;
-			recv(connectionPorts[i], recievedMessage, sizeof(recievedMessage), 0);
-			printf("%s", recievedMessage); //{TODO} Temporary!!! Is not thread safe!
+			// printf("%d\n", connectionPorts[i]);
+			int msgSize = recv(
+				connectionPorts[i], 
+				recievedMessage, 
+				sizeof(recievedMessage), 
+				MSG_DONTWAIT
+			);
+			if(msgSize <= 0)
+				continue;
+			
+			// printf("%c", recievedMessage[0]);
+			fputs(recievedMessage, stdout);
+			fflush(stdout);
+			// printf("Hi there");
 		}
+		// pthread_mutex_unlock(&recievedMsgMutex);
+		pthread_mutex_unlock(&printMutex);
+		pthread_mutex_unlock(&connectionsMutex);
 		// SendMessageAll(recievedMessage);
 	}
 	return NULL;
