@@ -22,7 +22,7 @@ void AppendCharacter(char c){
 }
 
 void RemoveLastCharacter(){
-    buffer[buffIndex--] = '\0';
+    buffer[--buffIndex] = '\0';
     ClampIndex();
 }
 

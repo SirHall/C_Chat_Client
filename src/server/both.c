@@ -170,8 +170,7 @@ void *RecieveMessages(void *any){
 			);
 			if(msgSize <= 0)
 				continue;
-			
-			// printf("%c", recievedMessage[0]);
+			// printf("%s\n", recievedMessage);
 			fputs(recievedMessage, stdout);
 			fflush(stdout);
 			// printf("Hi there");

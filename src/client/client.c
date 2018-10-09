@@ -119,7 +119,7 @@ void CloseConnection(){
 
 void SendMessage(const char *message){
     //Send message to client
-	send(netSocket, message, sizeof(message), 0);
+    send(netSocket, message, sizeof(message), 0);
 }
 
 void Loop(){
