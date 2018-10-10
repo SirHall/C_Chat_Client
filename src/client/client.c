@@ -48,7 +48,7 @@ void Loop();
 
 #pragma region Mutexes
 
-pthread_mutex_t IOMutex;
+pthread_mutex_t IOMutex = PTHREAD_MUTEX_INITIALIZER;
 
 #pragma endregion
 
@@ -70,8 +70,6 @@ int main(int argc, char *argv[]){
 
     Initialize();
 
-    //Initialize mutexes
-    pthread_mutex_init(&IOMutex, NULL);
 
     StartNCurses();
 
@@ -79,6 +77,8 @@ int main(int argc, char *argv[]){
 
     Connect();
 
+    //Initialize mutexes
+    // pthread_mutex_init(&IOMutex, NULL);
     pthread_create(&readRecThread, NULL, RecieveFromServer, NULL);
 
     Loop();
@@ -112,11 +112,11 @@ void Connect(){
 }
 
 //Must be run in thread
-void *RecieveFromServer(){
+void *RecieveFromServer(void *any){
     //Recieve data from the server
     while(1){
+        recv(netSocket, serverResponse, sizeof(serverResponse), 0);
         pthread_mutex_lock(&IOMutex);
-        recv(netSocket, serverResponse, sizeof(serverResponse), MSG_DONTWAIT);
         printw(serverResponse);
         pthread_mutex_unlock(&IOMutex);
     }
@@ -130,6 +130,8 @@ void CloseConnection(){
 
 void SendMessage(const char *message){
     //Send message to client
+
+    printw(" -- Sent Message\n");
     send(netSocket, message, sizeof(message), 0);
 }
 

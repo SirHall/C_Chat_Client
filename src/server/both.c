@@ -57,7 +57,6 @@ char stdIn[2048];
 
 int main(int argc, char *argv[]){
 	connectionPorts = calloc(maxConnections, sizeof(int));
-	
 	for(int i = 0; i < maxConnections; i++)
 		connectionPorts[i] = -1; //Initialise all default ports to -1
 
@@ -70,7 +69,7 @@ int main(int argc, char *argv[]){
 	
 	//---SETUP SERVER---//
 	bind(netSocket, (struct sockaddr*) &serverAddress, sizeof(serverAddress));
-
+	listen(netSocket, 128);
 
 	//--SETUP THREADS--//
 	//Mutexes
@@ -90,54 +89,53 @@ int main(int argc, char *argv[]){
 
 void *ListenToNewConnections(void *any){
 	while(1){
-		if(currentConnections < maxConnections){
-			listen(netSocket, maxConnections);
+		if(currentConnections < maxConnections){ //{TODO}This doesn't seem safe
 			
+			// if()
+			// 	continue; 
+			
+			//This will block until a new connection can be accepted
 			int clientSocket = accept(netSocket, NULL, NULL);
 			
+			pthread_mutex_lock(&connectionsMutex);
 			pthread_mutex_lock(&printMutex);
-			printf("%s: %d\n", "Got new connection", clientSocket); //{TODO} Not threadsafe!!!
-			printf("Now has %d connections\n", currentConnections);
-	
-			if(currentConnections < maxConnections){
-				//Connection succesful
-				send(clientSocket, connectionMessage, sizeof(connectionMessage), 0);
-				pthread_mutex_lock(&connectionsMutex);
-				AddConnection(clientSocket); //{TODO} Not threadsafe!!!
-				pthread_mutex_unlock(&connectionsMutex);
-			}else{
-				//Connection declined
-				// send(clientSocket, declineMessage, sizeof(declineMessage), 0);
-			}
+			//Connection successful
+			send(clientSocket, connectionMessage, sizeof(connectionMessage), 0);
+			AddConnection(clientSocket);
+			
+			printf("%s: %d\n", "Got new connection", clientSocket);
+			printf("Now has %d connection(s)\n", currentConnections);
+			
 			pthread_mutex_unlock(&printMutex);
+			pthread_mutex_unlock(&connectionsMutex);
 		}
 	}	
 }
 
 int AddConnection(int connectionPort){
 	int emptyConnectionIndex = -1;
-	
 	//Find first element in 'connectionPorts'
 	for(int i = 0; i < maxConnections; i++){
 		if(connectionPorts[i] == -1){
+			currentConnections++;
 			emptyConnectionIndex = i;
+			connectionPorts[emptyConnectionIndex] = connectionPort;
 			break;
 		}
 	}
 	
-	if(emptyConnectionIndex == -1){ //{TODO} Could probably move printing outside this function
-		//All connection slots have a port assigned
+	if(emptyConnectionIndex == -1) //{TODO} Could probably move printing outside this function
 		printf("Could not add to 'connectionPort', no empty elements!\n");
-	}else{
+	else
 		printf("Added new connection port: %d\n", connectionPort);
-		connectionPorts[emptyConnectionIndex] = connectionPort;
-	}
+	
 	return emptyConnectionIndex != -1; //Returns whether could insert connectionPort
 }
 
 void RemoveConnectionPort(int connectionPort){
 	for(int i = 0; i < maxConnections; i++){
 		if(connectionPorts[i] == connectionPort){
+			currentConnections--;
 			close(connectionPort);
 			connectionPorts[i] = -1;
 			return; //{TODO} Make this a 'break'?
@@ -151,30 +149,31 @@ void *RecieveMessages(void *any){
 	//{TODO} Clear from memory
 	char recievedMessage[2048] = ""; //{TODO} Move buffer size into member field	
 	while(1){//{TODO} Replace loop
-		// pthread_mutex_lock(&recievedMsgMutex);
-		pthread_mutex_lock(&printMutex);
-		pthread_mutex_lock(&connectionsMutex);
-		for(int i = 0; i < maxConnections; i++){ //{TODO} Fix up!
-			if(connectionPorts[i] == -1) 
-				continue;
-			// printf("%d\n", connectionPorts[i]);
-			int msgSize = recv(
-				connectionPorts[i], 
-				recievedMessage, 
-				sizeof(recievedMessage), 
-				MSG_DONTWAIT
-			);
-			if(msgSize <= 0)
-				continue;
-			// printf("%s\n", recievedMessage);
-			fputs(recievedMessage, stdout);
-			fflush(stdout);
-			// printf("Hi there");
+		if(currentConnections > 0){
+			pthread_mutex_lock(&recievedMsgMutex);
+			pthread_mutex_lock(&printMutex);
+			for(int i = 0; i < maxConnections; i++){ //{TODO} Fix up!
+				if(connectionPorts[i] == -1) 
+						continue;
+					// printf("%d\n", connectionPorts[i]);
+					int msgSize = recv(
+						connectionPorts[i], 
+						recievedMessage, 
+						sizeof(recievedMessage), 
+						MSG_DONTWAIT
+					);
+				// pthread_mutex_lock(&connectionsMutex);
+					if(msgSize <= 0)
+						continue;
+					fputs(recievedMessage, stdout);
+					fflush(stdout);
+					// printf("Hi there");
+				// pthread_mutex_unlock(&connectionsMutex);
+			}
+			pthread_mutex_unlock(&recievedMsgMutex);
+			pthread_mutex_unlock(&printMutex);
+			// SendMessageAll(recievedMessage);
 		}
-		// pthread_mutex_unlock(&recievedMsgMutex);
-		pthread_mutex_unlock(&printMutex);
-		pthread_mutex_unlock(&connectionsMutex);
-		// SendMessageAll(recievedMessage);
 	}
 	return NULL;
 }
