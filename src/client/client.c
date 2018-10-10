@@ -46,6 +46,12 @@ void Loop();
 
 #pragma endregion
 
+#pragma region Mutexes
+
+pthread_mutex_t IOMutex;
+
+#pragma endregion
+
 int port = 9002;
 int ip = 0;
 // inet_pton(AF_INET, IPAddress, &ip);
@@ -63,6 +69,9 @@ void Error(const char *msg){
 int main(int argc, char *argv[]){
 
     Initialize();
+
+    //Initialize mutexes
+    pthread_mutex_init(&IOMutex, NULL);
 
     StartNCurses();
 
@@ -106,8 +115,10 @@ void Connect(){
 void *RecieveFromServer(){
     //Recieve data from the server
     while(1){
-        recv(netSocket, serverResponse, sizeof(serverResponse), 0);
-        printw(serverResponse); //{TODO} Temporary!!! Not thread safe!
+        pthread_mutex_lock(&IOMutex);
+        recv(netSocket, serverResponse, sizeof(serverResponse), MSG_DONTWAIT);
+        printw(serverResponse);
+        pthread_mutex_unlock(&IOMutex);
     }
     return NULL;
 }
@@ -122,8 +133,10 @@ void SendMessage(const char *message){
     send(netSocket, message, sizeof(message), 0);
 }
 
+//{TODO} Make this sendd the entire buffer instead of just 8 bytes at a time
 void Loop(){
     for(;;){
+        pthread_mutex_lock(&IOMutex);
 		typedKey = getch();
 		sprintf(inVal, "%c", typedKey);
 		if(typedKey != -1){
@@ -140,7 +153,7 @@ void Loop(){
                 // SendMessage(inVal);}//{TODO} Just here for testing! REMOVE
             }
         }
-		
+		pthread_mutex_unlock(&IOMutex);
         // else
 		// 	printw("!");
         

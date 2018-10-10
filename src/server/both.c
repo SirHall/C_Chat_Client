@@ -90,31 +90,27 @@ int main(int argc, char *argv[]){
 
 void *ListenToNewConnections(void *any){
 	while(1){
-		listen(netSocket, maxConnections);
-		pthread_mutex_lock(&connectionsMutex);
-		if(currentConnections >= maxConnections){
-			pthread_mutex_unlock(&connectionsMutex);
-			continue;
-		}
-		pthread_mutex_unlock(&connectionsMutex);
-
-		int clientSocket = accept(netSocket, NULL, NULL);
-		
-		pthread_mutex_lock(&printMutex);
-		printf("%s: %d\n", "Got new connection", clientSocket); //{TODO} Not threadsafe!!!
-		printf("Now has %d connections\n", currentConnections);
-
 		if(currentConnections < maxConnections){
-			//Connection succesful
-			send(clientSocket, connectionMessage, sizeof(connectionMessage), 0);
-			pthread_mutex_lock(&connectionsMutex);
-			AddConnection(clientSocket); //{TODO} Not threadsafe!!!
-			pthread_mutex_unlock(&connectionsMutex);
-		}else{
-			//Connection declined
-			send(clientSocket, declineMessage, sizeof(declineMessage), 0);
+			listen(netSocket, maxConnections);
+			
+			int clientSocket = accept(netSocket, NULL, NULL);
+			
+			pthread_mutex_lock(&printMutex);
+			printf("%s: %d\n", "Got new connection", clientSocket); //{TODO} Not threadsafe!!!
+			printf("Now has %d connections\n", currentConnections);
+	
+			if(currentConnections < maxConnections){
+				//Connection succesful
+				send(clientSocket, connectionMessage, sizeof(connectionMessage), 0);
+				pthread_mutex_lock(&connectionsMutex);
+				AddConnection(clientSocket); //{TODO} Not threadsafe!!!
+				pthread_mutex_unlock(&connectionsMutex);
+			}else{
+				//Connection declined
+				// send(clientSocket, declineMessage, sizeof(declineMessage), 0);
+			}
+			pthread_mutex_unlock(&printMutex);
 		}
-		pthread_mutex_unlock(&printMutex);
 	}	
 }
 
