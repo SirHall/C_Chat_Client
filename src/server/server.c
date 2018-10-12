@@ -6,6 +6,7 @@
 #include <pthread.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include "netConst.h"
 
 #pragma region defines
 
@@ -18,7 +19,7 @@
 void *ListenToNewConnections(void *any);
 void *RecieveMessages(void *any);
 void RemoveConnectionPort(int connectionPort);
-void SendMessageAll(char *message);
+void SendMessageAll(char *messadge);
 void SendMessageTarget(char *message, int socket);
 void SendMessageAllExcept(char *message, int exceptionSocket);
 int AddConnection(int connectionPort);
@@ -31,7 +32,7 @@ void RemoveConnectionPort(int connectionPort);
 int netSocket;
 pthread_t newConnThread;
 pthread_t recievedMsgThread;
-
+char recievedMessage[MSG_SIZE] = "";
 
 #pragma endregion
 
@@ -51,9 +52,6 @@ int *connectionPorts;
 
 char connectionMessage[256] = "Connection successful!\n";
 char declineMessage[256] = "Connection declined, server full\n"; //{TODO} May want to setup proper error codes
-
-
-char stdIn[2048];
 
 int main(int argc, char *argv[]){
 	connectionPorts = calloc(maxConnections, sizeof(int));
@@ -147,7 +145,6 @@ void RemoveConnectionPort(int connectionPort){
 //To be run asyncronously
 void *RecieveMessages(void *any){
 	//{TODO} Clear from memory
-	char recievedMessage[2048] = ""; //{TODO} Move buffer size into member field	
 	while(1){//{TODO} Replace loop
 		if(currentConnections > 0){
 			pthread_mutex_lock(&recievedMsgMutex);
@@ -159,27 +156,26 @@ void *RecieveMessages(void *any){
 					int msgSize = recv(
 						connectionPorts[i], 
 						recievedMessage, 
-						sizeof(recievedMessage), 
+						MSG_SIZE, 
 						MSG_DONTWAIT
 					);
-				// pthread_mutex_lock(&connectionsMutex);
 					if(msgSize <= 0)
 						continue;
 					fputs(recievedMessage, stdout);
 					fflush(stdout);
-					// printf("Hi there");
-				// pthread_mutex_unlock(&connectionsMutex);
+					SendMessageAllExcept(recievedMessage, connectionPorts[i]);
 			}
+			for(int i = 0; i < MSG_SIZE; i++)
+				recievedMessage[i] = '\0';
 			pthread_mutex_unlock(&recievedMsgMutex);
 			pthread_mutex_unlock(&printMutex);
-			// SendMessageAll(recievedMessage);
 		}
 	}
 	return NULL;
 }
 
 void SendMessageTarget(char *message, int socket){
-	send(socket, message, sizeof(message), 0);
+	send(socket, message, MSG_SIZE, 0);
 }
 
 void SendMessageAll(char *message){

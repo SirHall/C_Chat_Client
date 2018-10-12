@@ -5,6 +5,7 @@ void Initialize();
 void AppendCharacter(char c);
 void RemoveLastCharacter();
 char* GetBuffer();
+int GetBufferSize();
 void Clear();
 
 #endif //SendBuffer.h

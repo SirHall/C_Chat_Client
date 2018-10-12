@@ -11,6 +11,7 @@
 #include "ncurseEZ.h"
 #include "messageBuffer.h"
 #include "SendBuffer.h"
+#include "netConst.h"
 
 #pragma region defines
 
@@ -25,7 +26,7 @@
 int netSocket;
 int connStat;
 struct sockaddr_in address;
-char serverResponse[2048];
+char serverResponse[MSG_SIZE] = "";
 
 pthread_t readRecThread;
 
@@ -41,7 +42,7 @@ void SetupNet();
 void Connect();
 void *RecieveFromServer();
 void CloseConnection();
-void SendMessage(const char *message);
+void SendMessage(const char *message, int messageSize);
 void Loop();
 
 #pragma endregion
@@ -61,103 +62,102 @@ char clientName[16] = "Unnamed";
 
 
 void Error(const char *msg){
-    perror(msg);
-    exit(1);
+	perror(msg);
+	exit(1);
 }
 
 //Client
 int main(int argc, char *argv[]){
 
-    Initialize();
+	Initialize();
 
 
-    StartNCurses();
+	StartNCurses();
 
-    SetupNet();
+	SetupNet();
 
-    Connect();
+	Connect();
 
-    //Initialize mutexes
-    // pthread_mutex_init(&IOMutex, NULL);
-    pthread_create(&readRecThread, NULL, RecieveFromServer, NULL);
+	//Initialize mutexes
+	// pthread_mutex_init(&IOMutex, NULL);
+	pthread_create(&readRecThread, NULL, RecieveFromServer, NULL);
 
-    Loop();
+	Loop();
 
-    pthread_join(readRecThread, NULL);
+	pthread_join(readRecThread, NULL);
 
-    StopNCurses();
+	StopNCurses();
 
-    return 0;
+	return 0;
 }
 
 void SetupNet(){
-    //Create socket
-    netSocket = socket(AF_INET, SOCK_STREAM, TCP);
+	//Create socket
+	netSocket = socket(AF_INET, SOCK_STREAM, TCP);
 
-    //Address structure for socket
-    address.sin_family = AF_INET;
-    address.sin_port = htons(port);
-    //{TODO} update this!
-    address.sin_addr.s_addr = INADDR_ANY; //Target IP address  
+	//Address structure for socket
+	address.sin_family = AF_INET;
+	address.sin_port = htons(port);
+	//{TODO} update this!
+	address.sin_addr.s_addr = INADDR_ANY; //Target IP address  
 }
 
 void Connect(){
-    //Connect
-    connStat = connect(netSocket, (struct sockaddr*) &address, sizeof(address));
+	//Connect
+	connStat = connect(netSocket, (struct sockaddr*) &address, sizeof(address));
 
-    if(connStat == -1)
-        printw("Connection failed %d\n", connStat);
-    else
-        printw("Connected!\n");
+	if(connStat == -1)
+		printw("Connection failed %d\n", connStat);
+	else
+		printw("Connected!\n");
 }
 
 //Must be run in thread
 void *RecieveFromServer(void *any){
-    //Recieve data from the server
-    while(1){
-        recv(netSocket, serverResponse, sizeof(serverResponse), 0);
-        pthread_mutex_lock(&IOMutex);
-        printw(serverResponse);
-        pthread_mutex_unlock(&IOMutex);
-    }
-    return NULL;
+	//Recieve data from the server
+	while(1){
+		for(int i = 0; i < sizeof(serverResponse); i++)
+			serverResponse[i] = '\0';
+		recv(netSocket, serverResponse, sizeof(serverResponse), 0);
+		pthread_mutex_lock(&IOMutex);
+		printw(serverResponse);
+		pthread_mutex_unlock(&IOMutex);
+	}
+	return NULL;
 }
 
 void CloseConnection(){
-    //Close socket
-    close(netSocket);
+	//Close socket
+	close(netSocket);
 }
 
-void SendMessage(const char *message){
-    //Send message to client
-
-    printw(" -- Sent Message\n");
-    send(netSocket, message, sizeof(message), 0);
+void SendMessage(const char *message, int messageSize){
+	//Send message to client
+	// printw("Message size: %d\n", sizeof(message));
+	send(netSocket, message, messageSize, 0);
 }
 
-//{TODO} Make this sendd the entire buffer instead of just 8 bytes at a time
+//{TODO} Make this send the entire buffer instead of just 8 bytes at a time
 void Loop(){
-    for(;;){
-        pthread_mutex_lock(&IOMutex);
+	for(;;){
+		pthread_mutex_lock(&IOMutex);
 		typedKey = getch();
 		sprintf(inVal, "%c", typedKey);
 		if(typedKey != -1){
-            if(typedKey == 3) 
-                break; //User pressed Ctrl+C
-            else if(typedKey == KEY_ENTER || typedKey == 10){
-                SendMessage(GetBuffer());
-                Clear();}
-            else if(typedKey == KEY_BACKSPACE)
-                RemoveLastCharacter();
-            else{
-                AppendCharacter(*inVal);
-                printw(inVal);
-                // SendMessage(inVal);}//{TODO} Just here for testing! REMOVE
-            }
-        }
+			if(typedKey == 3) 
+				break; //User pressed Ctrl+C
+			else if(typedKey == KEY_ENTER || typedKey == 10){
+				AppendCharacter('\n');
+				printw("\n");
+				SendMessage(GetBuffer(), GetBufferSize());
+				Clear();}
+			else if(typedKey == KEY_BACKSPACE)
+				RemoveLastCharacter();
+			else{
+				AppendCharacter(*inVal);
+				printw(inVal);
+			}
+		}
 		pthread_mutex_unlock(&IOMutex);
-        // else
-		// 	printw("!");
-        
 	}
 }
