@@ -6,8 +6,8 @@ Libs: <br />
 
 Building: <br />
     Client: <br />
-        Run qclientBuid.sh <br />
+       > Run qclientBuid.sh <br />
     Server: <br />
-        Run qserverBuild.sh <br />
+       > Run qserverBuild.sh <br />
     Both (Client + Server): <br />
-        Run buildBoth.sh <br />
+       > Run buildBoth.sh <br />
