@@ -161,6 +161,8 @@ void *RecieveMessages(void *any){
 					);
 					if(msgSize <= 0)
 						continue;
+					printf("Msg from: %d - %db\n", 
+						connectionPorts[i], msgSize);
 					fputs(recievedMessage, stdout);
 					fflush(stdout);
 					SendMessageAllExcept(recievedMessage, connectionPorts[i]);

@@ -12,6 +12,10 @@
 #include "messageBuffer.h"
 #include "SendBuffer.h"
 #include "netConst.h"
+#include "messageTypes.h"
+#include "serverCommands.h"
+#include "clientCommands.h"
+#include "clientNetworking.h"
 
 #pragma region defines
 
@@ -39,11 +43,11 @@ char inVal[2];
 
 void Error(const char *msg);
 void SetupNet();
-void Connect();
 void *RecieveFromServer();
 void CloseConnection();
 void SendMessage(const char *message, int messageSize);
 void Loop();
+void InputEntered();
 
 #pragma endregion
 
@@ -71,7 +75,6 @@ int main(int argc, char *argv[]){
 
 	Initialize();
 
-
 	StartNCurses();
 
 	SetupNet();
@@ -92,18 +95,21 @@ int main(int argc, char *argv[]){
 }
 
 void SetupNet(){
-	//Create socket
-	netSocket = socket(AF_INET, SOCK_STREAM, TCP);
-
-	//Address structure for socket
-	address.sin_family = AF_INET;
-	address.sin_port = htons(port);
-	//{TODO} update this!
-	address.sin_addr.s_addr = INADDR_ANY; //Target IP address  
+	  
 }
 
-void Connect(){
+void Connect(struct sockaddr* targetAddress, int targetPort){
 	//Connect
+	port = targetPort;
+	
+	//Create socket
+	netSocket = socket(AF_INET, SOCK_STREAM, TCP);
+	//Address structure for socket
+	address.sin_family = AF_INET;
+	address.sin_port = htons(targetPort);
+	//{TODO} update this!
+	address.sin_addr.s_addr = INADDR_ANY; //Target IP address
+
 	connStat = connect(netSocket, (struct sockaddr*) &address, sizeof(address));
 
 	if(connStat == -1)
@@ -149,7 +155,7 @@ void Loop(){
 			else if(typedKey == KEY_ENTER || typedKey == 10){
 				AppendCharacter('\n');
 				printw("\n");
-				SendMessage(GetBuffer(), GetBufferSize());
+				InputEntered();
 				Clear();}
 			else if(typedKey == KEY_BACKSPACE)
 				RemoveLastCharacter();
@@ -160,4 +166,30 @@ void Loop(){
 		}
 		pthread_mutex_unlock(&IOMutex);
 	}
+}
+
+void InputEntered(){
+
+	switch(GetBuffer()[0]){
+		case CLNCMD_Start:
+			//This is a local client command
+
+			break;
+		case SVRCMD_Start:
+			//This is a server command
+			
+			break;
+		default:
+			//This is a text message
+			
+			break;
+	}
+
+	if(GetBuffer()[0] == CLNCMD_Start){
+		//This is a client command
+	}else if(GetBuffer()[0] == SVRCMD_Start){
+		//This is a server command
+	}
+
+	SendMessage(GetBuffer(), strlen(GetBuffer()));
 }
