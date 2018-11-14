@@ -79,7 +79,8 @@ int main(int argc, char *argv[]){
 
 	SetupNet();
 
-	Connect();
+	//{TODO} Pull the sockaddr and target port from somewhere
+	Connect(/*address,*/ port);
 
 	//Initialize mutexes
 	// pthread_mutex_init(&IOMutex, NULL);
@@ -98,7 +99,7 @@ void SetupNet(){
 	  
 }
 
-void Connect(struct sockaddr* targetAddress, int targetPort){
+void Connect(/*struct sockaddr* targetAddress, */int targetPort){
 	//Connect
 	port = targetPort;
 	
@@ -181,7 +182,8 @@ void InputEntered(){
 			break;
 		default:
 			//This is a text message
-			
+			SendMessage(GetBuffer(), GetBufferSize());
+			Clear();
 			break;
 	}
 

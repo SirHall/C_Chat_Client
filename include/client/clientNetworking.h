@@ -3,7 +3,7 @@
 
 //{TODO} Eventually move all client networking here
 
-void Connect(struct sockaddr* targetAddress, int targetPort);
+void Connect(/*struct sockaddr* targetAddress, */int targetPort);
 
 #endif //clientNetworking.h
 

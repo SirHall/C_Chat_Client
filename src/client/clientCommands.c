@@ -22,8 +22,8 @@ void RunClientCommand(const char* input){
         inet_pton(AF_INET, "192.0.2.33", &address);
 
         
-
-        Connect(address, port);
+        //{TODO} Setup to recieve address
+        Connect(/*address, */port);
 
         // // now get it back and print it
         // inet_ntop(AF_INET, &(sa.sin_addr), str, INET_ADDRSTRLEN);
